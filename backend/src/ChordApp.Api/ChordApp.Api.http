@@ -1,0 +1,6 @@
+@ChordApp.Api_HostAddress = http://localhost:5110
+
+GET {{ChordApp.Api_HostAddress}}/health
+Accept: application/json
+
+###

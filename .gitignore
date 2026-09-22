@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.next/
+**/.venv/
+**/__pycache__/
+*.pyc
+.env
+*.mp3
+*.wav

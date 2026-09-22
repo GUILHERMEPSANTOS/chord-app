@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ChordApp.Api/ChordApp.Api.csproj" />
+    <Project Path="src/ChordApp.Domain/ChordApp.Domain.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ChordApp.IntegrationTests/ChordApp.IntegrationTests.csproj" />
+    <Project Path="tests/ChordApp.UnitTests/ChordApp.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: chordapp
+      POSTGRES_USER: chordapp
+      POSTGRES_PASSWORD: chordapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chordapp -d chordapp"]
+      interval: 3s
+      retries: 20
+  processor:
+    build: ./processor
+    restart: unless-stopped
+    environment:
+      OMP_NUM_THREADS: 2
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+  api:
+    build:
+      context: .
+      dockerfile: backend/src/ChordApp.Api/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Database: Host=db;Database=chordapp;Username=chordapp;Password=chordapp
+      ProcessorUrl: http://processor:8000
+      WebOrigin: http://localhost:3000
+      AUDIO_TEMP_DIR: /tmp/chord-app
+    depends_on:
+      db:
+        condition: service_healthy
+      processor:
+        condition: service_started
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000
+    depends_on:
+      - api
+volumes:
+  postgres_data:
