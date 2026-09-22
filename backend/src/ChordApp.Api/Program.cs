@@ -1,5 +1,8 @@
 using ChordApp.Api;
 using ChordApp.Api.Extensions;
+using ChordApp.Api.Services;
+using ChordApp.Application.CorrectChord;
+using ChordApp.Application.QueryMusic;
 using ChordApp.Application.SubmitMusic;
 using ChordApp.Infrastructure;
 using ChordApp.Infrastructure.Repositories;
@@ -17,6 +20,10 @@ builder.Services.AddHostedService<AnalysisWorker>();
 builder.Services.AddScoped<IMusicRepository, MusicRepository>();
 builder.Services.AddScoped<IMusicSubmission<AudioFileSource>, AudioFileSourceUpload>();
 builder.Services.AddScoped<IMusicSubmission<YouTubeSource>, MusicSubmissionYoutube>();
+builder.Services.AddScoped<ListMusics>();
+builder.Services.AddScoped<GetMusicDetails>();
+builder.Services.AddScoped<CorrectMusicChord>();
+builder.Services.AddScoped<IProcessingProgressReader, ProcessorProgressReader>();
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins(builder.Configuration["WebOrigin"] ?? "http://localhost:3000")

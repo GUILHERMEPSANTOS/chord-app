@@ -1,20 +1,49 @@
-﻿using ChordApp.Domain;
+using ChordApp.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace ChordApp.Infrastructure.Repositories
+namespace ChordApp.Infrastructure.Repositories;
+
+public sealed class MusicRepository(MusicDb musicDb) : IMusicRepository
 {
-    public class MusicRepository(MusicDb musicDb) : IMusicRepository
+    public async Task<IReadOnlyList<Music>> ListAsync(CancellationToken cancellationToken)
     {
-        public async Task<bool> ExistsAsync(Guid guid)
-        {
-            return await musicDb.Musics.AnyAsync(music => music.Id == guid);
-        }
+        return await musicDb.Musics
+            .AsNoTracking()
+            .OrderByDescending(music => music.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 
-        public async Task Save(Music music)
-        {
-            await musicDb.Musics.AddAsync(music);
+    public Task<Music?> GetWithChordsAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return musicDb.Musics
+            .AsNoTracking()
+            .Include(music => music.Chords)
+            .FirstOrDefaultAsync(music => music.Id == id, cancellationToken);
+    }
 
-            await musicDb.SaveChangesAsync();
-        }
+    public Task<ChordSegment?> GetChordAsync(
+        Guid musicId,
+        Guid chordId,
+        CancellationToken cancellationToken)
+    {
+        return musicDb.Chords.FirstOrDefaultAsync(
+            chord => chord.Id == chordId && chord.MusicId == musicId,
+            cancellationToken);
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        return musicDb.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<bool> ExistsAsync(Guid id)
+    {
+        return musicDb.Musics.AnyAsync(music => music.Id == id);
+    }
+
+    public async Task Save(Music music)
+    {
+        await musicDb.Musics.AddAsync(music);
+        await musicDb.SaveChangesAsync();
     }
 }
