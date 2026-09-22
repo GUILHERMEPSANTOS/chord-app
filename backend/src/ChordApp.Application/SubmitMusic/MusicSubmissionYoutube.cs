@@ -6,7 +6,7 @@ namespace ChordApp.Application.SubmitMusic
 {
     public class MusicSubmissionYoutube(IMusicRepository musicRepository) : IMusicSubmission<YouTubeSource>
     {        
-        public async Task<SubmissionResult> SubmitAsync(YouTubeSource source, CancellationToken cancellationToken)
+        public async Task<SubmissionResult?> SubmitAsync(YouTubeSource source, CancellationToken cancellationToken)
         {
             var canonical = YouTubeUrls.Canonical(source.Url);
 

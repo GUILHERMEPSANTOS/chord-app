@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 
-namespace ChordApp.Api;
+namespace ChordApp.Infrastructure;
 
 public static class AudioValidation
 {

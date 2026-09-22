@@ -2,7 +2,7 @@
 {
     public interface IMusicSubmission<in TSource>
     {
-        Task<SubmissionResult> SubmitAsync(
+        Task<SubmissionResult?> SubmitAsync(
             TSource source,
             CancellationToken cancellationToken);
     }

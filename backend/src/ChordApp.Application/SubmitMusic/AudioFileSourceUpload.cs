@@ -1,5 +1,5 @@
-﻿using ChordApp.Api;
 using ChordApp.Domain;
+using ChordApp.Infrastructure;
 using ChordApp.Infrastructure.Repositories;
 
 
@@ -38,10 +38,11 @@ namespace ChordApp.Application.SubmitMusic
 
 
                 var music = Music.Create(fileName: Path.GetFileName(source.FileName), durationSeconds: duration.Value);
+                music.Id = id;
 
                 await musicRepository.Save(music);
 
-                return new SubmissionResult(id);
+                return new SubmissionResult(music.Id);
             }
             finally
             {

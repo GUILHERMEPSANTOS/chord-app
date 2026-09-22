@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ChordApp.Domain;
+using ChordApp.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
