@@ -37,6 +37,8 @@ O processador usa `lv-chordia`, que empacota pesos de um trabalho de pesquisa. A
 
 ## Testes
 
+Para medir reconhecimento com músicas completas e acordes de referência, consulte [a avaliação local](benchmark/README.md). O avaliador não altera os acordes salvos nem combina automaticamente detectores. Ainda não há uma medição de precisão, pois o projeto não contém pares de áudio e anotações da mesma gravação.
+
 ```sh
 dotnet test backend/tests/ChordApp.UnitTests/ChordApp.UnitTests.csproj
 dotnet test backend/tests/ChordApp.IntegrationTests/ChordApp.IntegrationTests.csproj

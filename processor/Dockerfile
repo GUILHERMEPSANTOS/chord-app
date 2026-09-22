@@ -6,6 +6,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir 'torch==2.14.0+cpu' --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-benchmark.txt .
+RUN pip install --no-cache-dir -r requirements-benchmark.txt
 COPY app ./app
+COPY benchmark ./benchmark
 COPY tests ./tests
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

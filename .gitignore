@@ -8,4 +8,6 @@
 .env
 *.mp3
 *.wav
+benchmark/private/
+benchmark/results/
 .vs
