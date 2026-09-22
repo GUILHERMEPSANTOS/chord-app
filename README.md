@@ -17,11 +17,12 @@ O modelo executa um conjunto de cinco redes em CPU e pode levar vários minutos 
 
 - `POST /api/musics`: formulário `file` com MP3/WAV, até 30 MB e duração entre 1 e 900 segundos. Retorna `202` e o `id`.
 - `POST /api/musics/youtube`: corpo `{ "url": "https://www.youtube.com/watch?v=..." }` para vídeo público. Retorna `202` e o `id`.
-- `GET /api/musics/{id}`: estado `Pending`, `Processing`, `Completed` ou `Failed`, tom estimado e segmentos.
+- `GET /api/musics/{id}`: estado `Pending`, `Processing`, `Completed` ou `Failed`, `progressPercent`, `progressStage`, tom estimado e segmentos.
 - `GET /api/musics`: análises salvas.
 - `PUT /api/musics/{id}/chords/{chordId}`: corpo `{ "chord": "Am" }` para correção.
 
 Os segmentos têm `startTime`, `endTime`, `chord` e `confidence`. `confidence` fica `null` porque o modelo escolhido não fornece probabilidade calibrada de acerto por segmento. `N` representa ausência de acorde.
+`progressPercent` mostra marcos do download, normalização e cinco passagens do modelo. É uma porcentagem aproximada das etapas concluídas, não uma previsão do tempo restante. A tela destaca o acorde atual, mostra os próximos acordes e permite corrigir cada segmento na lista.
 
 ## Dados e limitações
 
@@ -39,6 +40,7 @@ O processador usa `lv-chordia`, que empacota pesos de um trabalho de pesquisa. A
 dotnet test backend/tests/ChordApp.UnitTests/ChordApp.UnitTests.csproj
 dotnet test backend/tests/ChordApp.IntegrationTests/ChordApp.IntegrationTests.csproj
 npm --prefix web run build
+docker compose exec processor python -m unittest discover -s tests -v
 ```
 
 Uma verificação real do modelo requer áudio de teste legalmente utilizável e Docker Compose em funcionamento.

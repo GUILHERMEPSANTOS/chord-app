@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 public sealed record CorrectChord(string Chord);
 public sealed record YouTubeRequest(string Url);
 public sealed record ChordResponse(Guid Id, double StartTime, double EndTime, string Chord, double? Confidence, bool Corrected);
-public sealed record MusicResponse(Guid Id, string FileName, string? SourceUrl, double DurationSeconds, string? Key, string Status, string? Error, List<ChordResponse> Chords);
+public sealed record MusicResponse(Guid Id, string FileName, string? SourceUrl, double DurationSeconds, string? Key, string Status, string? Error, int ProgressPercent, string? ProgressStage, List<ChordResponse> Chords);
+public sealed record ProgressSnapshot(int Percent, string Stage);
 public sealed record ProcessResult(string? Key, double? DurationSeconds, List<ProcessChord> Chords);
 public sealed record ProcessChord(double StartTime, double EndTime, string Chord, double? Confidence);
 
@@ -95,13 +96,14 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                 timeout.CancelAfter(TimeSpan.FromHours(6));
                 HttpResponseMessage response;
                 if (music.SourceUrl is not null)
-                    response = await clients.CreateClient("processor").PostAsJsonAsync("/analyze-youtube", new { url = music.SourceUrl }, timeout.Token);
+                    response = await clients.CreateClient("processor").PostAsJsonAsync("/analyze-youtube", new { url = music.SourceUrl, jobId = music.Id.ToString() }, timeout.Token);
                 else
                 {
                     using var form = new MultipartFormDataContent();
                     await using var input = File.OpenRead(path!);
                     using var content = new StreamContent(input);
                     form.Add(content, "file", Path.GetFileName(path!));
+                    form.Add(new StringContent(music.Id.ToString()), "job_id");
                     response = await clients.CreateClient("processor").PostAsync("/analyze", form, timeout.Token);
                 }
                 using (response)

@@ -41,6 +41,10 @@ public sealed class EndpointsTests : IClassFixture<TestFactory>
         Assert.NotNull(created);
         var details = await _client.GetAsync($"/api/musics/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, details.StatusCode);
+        var saved = await details.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(0, saved.GetProperty("progressPercent").GetInt32());
+        var list = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/musics");
+        Assert.Equal("Pending", list[0].GetProperty("status").GetString());
     }
 
     private sealed record CreatedJob(Guid Id, string Status);

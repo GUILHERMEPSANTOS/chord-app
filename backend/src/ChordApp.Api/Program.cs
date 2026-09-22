@@ -1,4 +1,5 @@
 using ChordApp.Domain;
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,11 +23,32 @@ using (var scope = app.Services.CreateScope())
     await db.SaveChangesAsync();
 }
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-app.MapGet("/api/musics", async (MusicDb db) => await db.Musics.AsNoTracking().OrderByDescending(m => m.CreatedAt).Select(m => new { m.Id, m.FileName, m.DurationSeconds, m.Key, m.Status, m.CreatedAt }).ToListAsync());
-app.MapGet("/api/musics/{id:guid}", async (Guid id, MusicDb db) =>
+app.MapGet("/api/musics", async (MusicDb db) =>
+{
+    var items = await db.Musics.AsNoTracking().OrderByDescending(m => m.CreatedAt)
+        .Select(m => new { m.Id, m.FileName, m.DurationSeconds, m.Key, m.Status, m.CreatedAt }).ToListAsync();
+    return items.Select(m => new { m.Id, m.FileName, m.DurationSeconds, m.Key, Status = m.Status.ToString(), m.CreatedAt });
+});
+app.MapGet("/api/musics/{id:guid}", async (Guid id, MusicDb db, IHttpClientFactory clients, CancellationToken ct) =>
 {
     var m = await db.Musics.AsNoTracking().Include(x => x.Chords).FirstOrDefaultAsync(x => x.Id == id);
-    return m is null ? Results.NotFound() : Results.Ok(new MusicResponse(m.Id, m.FileName, m.SourceUrl, m.DurationSeconds, m.Key, m.Status.ToString(), m.Error, m.Chords.OrderBy(c => c.StartTime).Select(c => new ChordResponse(c.Id, c.StartTime, c.EndTime, c.Chord, c.Confidence, c.Corrected)).ToList()));
+    if (m is null) return Results.NotFound();
+    var percent = m.Status == AnalysisStatus.Completed ? 100 : 0;
+    string? stage = null;
+    if (m.Status == AnalysisStatus.Processing)
+    {
+        percent = 2;
+        stage = "Preparando processamento";
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(2));
+            var snapshot = await clients.CreateClient("processor").GetFromJsonAsync<ProgressSnapshot>($"/progress/{id}", timeout.Token);
+            if (snapshot is not null) { percent = Math.Clamp(snapshot.Percent, 0, 100); stage = snapshot.Stage; }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException) { }
+    }
+    return Results.Ok(new MusicResponse(m.Id, m.FileName, m.SourceUrl, m.DurationSeconds, m.Key, m.Status.ToString(), m.Error, percent, stage, m.Chords.OrderBy(c => c.StartTime).Select(c => new ChordResponse(c.Id, c.StartTime, c.EndTime, c.Chord, c.Confidence, c.Corrected)).ToList()));
 });
 app.MapPost("/api/musics/youtube", async (YouTubeRequest body, MusicDb db, CancellationToken ct) =>
 {
