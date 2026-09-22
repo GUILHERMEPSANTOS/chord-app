@@ -9,6 +9,8 @@
   <ItemGroup>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
     <ProjectReference Include="../ChordApp.Domain/ChordApp.Domain.csproj" />
+    <ProjectReference Include="..\ChordApp.Application\ChordApp.Application.csproj" />
+    <ProjectReference Include="..\ChordApp.Infrastructure\ChordApp.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

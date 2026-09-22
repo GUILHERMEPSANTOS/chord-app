@@ -8,3 +8,4 @@
 .env
 *.mp3
 *.wav
+.vs

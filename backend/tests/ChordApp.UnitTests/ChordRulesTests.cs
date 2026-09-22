@@ -1,4 +1,4 @@
-using ChordApp.Domain;
+using ChordApp.Domain.Rules;
 
 namespace ChordApp.UnitTests;
 
