@@ -109,11 +109,17 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                 response.EnsureSuccessStatusCode();
                 var result = await response.Content.ReadFromJsonAsync<ProcessResult>(new JsonSerializerOptions(JsonSerializerDefaults.Web), timeout.Token) ?? throw new InvalidDataException("Resposta vazia.");
                 if (result.DurationSeconds is double measured) music.DurationSeconds = measured;
+                var segments = new List<ChordSegment>();
                 foreach (var c in result.Chords)
                 {
-                    ChordRules.Validate(c.StartTime, c.EndTime, music.DurationSeconds, c.Chord);
-                    db.Chords.Add(new ChordSegment { MusicId = music.Id, StartTime = c.StartTime, EndTime = c.EndTime, Chord = c.Chord, Confidence = c.Confidence });
+                    if (!double.IsFinite(c.StartTime) || !double.IsFinite(c.EndTime)) throw new InvalidDataException("Tempo inválido no resultado.");
+                    var start = Math.Max(0, c.StartTime);
+                    var end = Math.Min(music.DurationSeconds, c.EndTime);
+                    if (end <= start) continue;
+                    ChordRules.Validate(start, end, music.DurationSeconds, c.Chord);
+                    segments.Add(new ChordSegment { MusicId = music.Id, StartTime = start, EndTime = end, Chord = c.Chord, Confidence = c.Confidence });
                 }
+                db.Chords.AddRange(segments);
                 music.Key = result.Key;
                 music.Status = AnalysisStatus.Completed;
                 }
