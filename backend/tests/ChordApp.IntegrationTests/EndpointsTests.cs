@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using ChordApp.Domain;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +10,8 @@ using Xunit;
 public sealed class EndpointsTests : IClassFixture<TestFactory>
 {
     private readonly HttpClient _client;
-    public EndpointsTests(TestFactory factory) => _client = factory.CreateClient();
+    private readonly TestFactory _factory;
+    public EndpointsTests(TestFactory factory) { _factory = factory; _client = factory.CreateClient(); }
 
     [Fact]
     public async Task HealthReturnsOk() => Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/health")).StatusCode);
@@ -45,6 +47,26 @@ public sealed class EndpointsTests : IClassFixture<TestFactory>
         Assert.Equal(0, saved.GetProperty("progressPercent").GetInt32());
         var list = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/musics");
         Assert.Equal("Pending", list[0].GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task CorrectChordAcceptsSeventhAndPersistsIt()
+    {
+        var music = new Music { DurationSeconds = 10, Status = AnalysisStatus.Completed };
+        var segment = new ChordSegment { MusicId = music.Id, StartTime = 0, EndTime = 5, Chord = "C" };
+        music.Chords.Add(segment);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<MusicDb>();
+            db.Musics.Add(music);
+            await db.SaveChangesAsync();
+        }
+
+        var response = await _client.PutAsJsonAsync($"/api/musics/{music.Id}/chords/{segment.Id}", new { chord = "Cmaj7" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var saved = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal("Cmaj7", saved.GetProperty("chord").GetString());
+        Assert.True(saved.GetProperty("corrected").GetBoolean());
     }
 
     private sealed record CreatedJob(Guid Id, string Status);

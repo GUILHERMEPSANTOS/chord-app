@@ -76,9 +76,22 @@ def simplify(label: str) -> str:
     root = ENHARMONIC.get(root, root)
     if root not in NOTES:
         return "N"
+    quality = quality.split("/", 1)[0]
+    if quality == "hdim7":
+        return root + "m7b5"
+    if quality == "dim7":
+        return root + "dim7"
+    if quality == "dim":
+        return root + "dim"
+    if quality == "maj7":
+        return root + "maj7"
+    if quality == "min7":
+        return root + "m7"
+    if quality == "7":
+        return root + "7"
     if quality.startswith("min"):
         return root + "m"
-    if quality.startswith("maj") or quality == "7":
+    if quality.startswith("maj"):
         return root
     return "N"
 
@@ -95,7 +108,7 @@ def estimate_key(path: str) -> str | None:
 
 def analyze(path: str, job_id: str | None = None) -> dict:
     with _model_lock, redirect_stderr(ProgressStderr(sys.stderr, job_id)):
-        raw = chord_recognition(audio_path=path, chord_dict_name="ismir2017")
+        raw = chord_recognition(audio_path=path, chord_dict_name="submission")
     set_progress(job_id, 90, "Organizando segmentos")
     chords = []
     for item in raw:

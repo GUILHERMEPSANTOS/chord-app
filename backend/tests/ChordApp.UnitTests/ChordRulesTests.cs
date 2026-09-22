@@ -8,11 +8,18 @@ public class ChordRulesTests
     [InlineData("C")]
     [InlineData("Am")]
     [InlineData("F#")]
+    [InlineData("C7")]
+    [InlineData("F#maj7")]
+    [InlineData("A#m7")]
+    [InlineData("Cdim")]
+    [InlineData("Cdim7")]
+    [InlineData("F#m7b5")]
     [InlineData("N")]
     public void AcceptsSupportedChord(string chord) => Assert.True(ChordRules.IsAllowed(chord));
 
     [Theory]
-    [InlineData("C7")]
+    [InlineData("C9")]
+    [InlineData("Cmmaj7")]
     [InlineData("H")]
     [InlineData("")]
     public void RejectsUnsupportedChord(string chord) => Assert.False(ChordRules.IsAllowed(chord));

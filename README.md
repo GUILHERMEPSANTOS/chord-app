@@ -1,6 +1,6 @@
 # ChordApp
 
-MVP local para reconhecer acordes maiores e menores em MP3/WAV ou vídeos públicos do YouTube e acompanhar o resultado em um player. API ASP.NET Core, processador Python, Next.js e PostgreSQL.
+MVP local para reconhecer acordes maiores, menores, sétimas e diminutos em MP3/WAV ou vídeos públicos do YouTube e acompanhar o resultado em um player. API ASP.NET Core, processador Python, Next.js e PostgreSQL.
 
 ## Executar
 
@@ -19,9 +19,10 @@ O modelo executa um conjunto de cinco redes em CPU e pode levar vários minutos 
 - `POST /api/musics/youtube`: corpo `{ "url": "https://www.youtube.com/watch?v=..." }` para vídeo público. Retorna `202` e o `id`.
 - `GET /api/musics/{id}`: estado `Pending`, `Processing`, `Completed` ou `Failed`, `progressPercent`, `progressStage`, tom estimado e segmentos.
 - `GET /api/musics`: análises salvas.
-- `PUT /api/musics/{id}/chords/{chordId}`: corpo `{ "chord": "Am" }` para correção.
+- `PUT /api/musics/{id}/chords/{chordId}`: corpo `{ "chord": "Am7" }` para correção.
 
 Os segmentos têm `startTime`, `endTime`, `chord` e `confidence`. `confidence` fica `null` porque o modelo escolhido não fornece probabilidade calibrada de acerto por segmento. `N` representa ausência de acorde.
+Novas análises usam o vocabulário `submission` do `lv-chordia`. A tela aceita tríades maiores e menores; sétima dominante (`C7`), maior (`Cmaj7`) e menor (`Cm7`); diminuto (`Cdim`), diminuto com sétima (`Cdim7`) e meio diminuto (`Cm7b5`). Outros tipos detectados são reduzidos a maior/menor quando a qualidade permite, ou a `N`. As análises antigas permanecem como foram salvas. O vocabulário maior oferece mais detalhes, mas a melhoria de precisão ainda precisa ser medida com músicas anotadas.
 `progressPercent` mostra marcos do download, normalização e cinco passagens do modelo. É uma porcentagem aproximada das etapas concluídas, não uma previsão do tempo restante. A tela destaca o acorde atual, mostra os próximos acordes e permite corrigir cada segmento na lista.
 
 ## Dados e limitações

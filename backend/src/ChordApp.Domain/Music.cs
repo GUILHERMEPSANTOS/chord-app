@@ -29,7 +29,7 @@ public sealed class ChordSegment
 public static class ChordRules
 {
     private static readonly HashSet<string> Allowed =
-        Enumerable.Range(0, 12).SelectMany(i => new[] { Note(i), Note(i) + "m" }).Append("N").ToHashSet();
+        Enumerable.Range(0, 12).SelectMany(i => new[] { Note(i), Note(i) + "m", Note(i) + "7", Note(i) + "maj7", Note(i) + "m7", Note(i) + "dim", Note(i) + "dim7", Note(i) + "m7b5" }).Append("N").ToHashSet();
 
     public static bool IsAllowed(string chord) => Allowed.Contains(chord);
     public static void Validate(double start, double end, double duration, string chord)

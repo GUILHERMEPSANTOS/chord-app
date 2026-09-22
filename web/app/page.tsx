@@ -9,7 +9,7 @@ type Music = { id: string; fileName: string; sourceUrl: string | null; durationS
 type LibraryItem = Pick<Music, 'id' | 'fileName' | 'status'>;
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const CHORDS = ['N', ...NOTES.flatMap(note => [note, `${note}m`])];
+const CHORDS = ['N', ...NOTES.flatMap(note => [note, `${note}m`, `${note}7`, `${note}maj7`, `${note}m7`, `${note}dim`, `${note}dim7`, `${note}m7b5`])];
 const fmt = (seconds: number) => `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 const statusLabel: Record<string, string> = { Pending: 'Na fila', Processing: 'Analisando', Completed: 'Concluída', Failed: 'Falhou' };
 
@@ -130,7 +130,7 @@ export default function Home() {
   }
 
   return <main className="app-shell">
-    <header className="topbar"><span className="brand">◉ <strong>ChordApp</strong></span><span className="topbar-title">Acordes</span><span className="topbar-badge">24 acordes · maior e menor</span></header>
+    <header className="topbar"><span className="brand">◉ <strong>ChordApp</strong></span><span className="topbar-title">Acordes</span><span className="topbar-badge">Maiores · menores · sétimas · diminutos</span></header>
     <div className="workspace">
       <aside className="sidebar">
         <div className="sidebar-heading"><span className="overline">BIBLIOTECA</span><h1>Suas músicas</h1><p>Envie um áudio ou cole um link para acompanhar os acordes.</p></div>
