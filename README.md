@@ -11,6 +11,7 @@ docker compose up --build
 ```
 
 Abra http://localhost:3000. Na primeira construção, PyTorch e os pesos do modelo podem tornar o download demorado. A API fica em http://localhost:5000/health e o processador em sua rede interna do Compose.
+O modelo executa um conjunto de cinco redes em CPU e pode levar vários minutos até para áudios curtos. A latência em músicas completas precisa ser medida no seu computador antes de usar em produção.
 
 ## Contrato
 

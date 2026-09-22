@@ -92,7 +92,7 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
             try
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-                timeout.CancelAfter(TimeSpan.FromMinutes(10));
+                timeout.CancelAfter(TimeSpan.FromHours(6));
                 HttpResponseMessage response;
                 if (music.SourceUrl is not null)
                     response = await clients.CreateClient("processor").PostAsJsonAsync("/analyze-youtube", new { url = music.SourceUrl }, timeout.Token);
@@ -112,7 +112,7 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                 foreach (var c in result.Chords)
                 {
                     ChordRules.Validate(c.StartTime, c.EndTime, music.DurationSeconds, c.Chord);
-                    music.Chords.Add(new ChordSegment { StartTime = c.StartTime, EndTime = c.EndTime, Chord = c.Chord, Confidence = c.Confidence });
+                    db.Chords.Add(new ChordSegment { MusicId = music.Id, StartTime = c.StartTime, EndTime = c.EndTime, Chord = c.Chord, Confidence = c.Confidence });
                 }
                 music.Key = result.Key;
                 music.Status = AnalysisStatus.Completed;

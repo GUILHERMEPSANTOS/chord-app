@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<MusicDb>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Database") ?? "Host=localhost;Database=chordapp;Username=chordapp;Password=chordapp"));
-builder.Services.AddHttpClient("processor", c => c.BaseAddress = new Uri(builder.Configuration["ProcessorUrl"] ?? "http://localhost:8000"));
+builder.Services.AddHttpClient("processor", c => { c.BaseAddress = new Uri(builder.Configuration["ProcessorUrl"] ?? "http://localhost:8000"); c.Timeout = Timeout.InfiniteTimeSpan; });
 builder.Services.AddHostedService<AnalysisWorker>();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(builder.Configuration["WebOrigin"] ?? "http://localhost:3000").AllowAnyHeader().AllowAnyMethod()));
 var app = builder.Build();
