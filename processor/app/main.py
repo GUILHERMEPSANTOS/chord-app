@@ -1,15 +1,41 @@
 import asyncio
 import os
+import re
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import librosa
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from pydantic import BaseModel
 from lv_chordia.chord_recognition import chord_recognition
 
 app = FastAPI(title="ChordApp Processor")
+
+
+class YouTubeRequest(BaseModel):
+    url: str
+
+
+def canonical_youtube_url(value: str) -> str | None:
+    try:
+        parsed = urlparse(value)
+        valid_port = parsed.port in (None, 443)
+    except ValueError:
+        return None
+    if parsed.scheme != "https" or not valid_port or parsed.username or parsed.password:
+        return None
+    host = (parsed.hostname or "").lower()
+    if host in ("youtu.be", "www.youtu.be"):
+        video_id = parsed.path.strip("/")
+    elif host in ("youtube.com", "www.youtube.com", "m.youtube.com"):
+        video_id = parse_qs(parsed.query).get("v", [None])[0] if parsed.path == "/watch" else parsed.path.removeprefix("/shorts/").strip("/") if parsed.path.startswith("/shorts/") else None
+    else:
+        return None
+    return f"https://www.youtube.com/watch?v={video_id}" if video_id and re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) else None
 NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 ENHARMONIC = {"Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#", "Cb": "B", "B#": "C", "Fb": "E", "E#": "F"}
 MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
@@ -47,7 +73,15 @@ def analyze(path: str) -> dict:
         start, end = float(item["start_time"]), float(item["end_time"])
         if end > start:
             chords.append({"startTime": start, "endTime": end, "chord": simplify(item["chord"]), "confidence": None})
-    return {"key": estimate_key(path), "chords": chords}
+    return {"key": estimate_key(path), "durationSeconds": float(librosa.get_duration(path=path)), "chords": chords}
+
+
+def convert_and_analyze(source: str, target: str) -> dict:
+    subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", source, "-ac", "1", "-ar", "22050", target], check=True, timeout=90, capture_output=True)
+    result = analyze(target)
+    if result["durationSeconds"] < 1 or result["durationSeconds"] > 900:
+        raise ValueError("Duração fora do limite")
+    return result
 
 
 @app.get("/health")
@@ -71,7 +105,25 @@ async def analyze_upload(file: UploadFile = File(...)):
                     raise HTTPException(413, "Arquivo muito grande")
                 output.write(chunk)
         try:
-            await asyncio.to_thread(subprocess.run, ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", source, "-ac", "1", "-ar", "22050", target], check=True, timeout=90, capture_output=True)
-            return await asyncio.to_thread(analyze, target)
+            return await asyncio.to_thread(convert_and_analyze, source, target)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             raise HTTPException(422, "Não foi possível decodificar o áudio") from exc
+
+
+@app.post("/analyze-youtube")
+async def analyze_youtube(request: YouTubeRequest):
+    url = canonical_youtube_url(request.url)
+    if url is None:
+        raise HTTPException(400, "URL do YouTube inválida")
+    with tempfile.TemporaryDirectory() as directory:
+        command = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--match-filter", "duration <= 900", "--max-filesize", "30M", "--js-runtimes", "node", "-f", "bestaudio", "-o", os.path.join(directory, "source.%(ext)s"), url]
+        try:
+            await asyncio.to_thread(subprocess.run, command, check=True, timeout=180, capture_output=True)
+            sources = [p for p in Path(directory).glob("source.*") if p.is_file() and p.suffix != ".part"]
+            if len(sources) != 1 or sources[0].stat().st_size > 30 * 1024 * 1024:
+                raise HTTPException(422, "Arquivo indisponível ou maior que 30 MB")
+            return await asyncio.to_thread(convert_and_analyze, str(sources[0]), os.path.join(directory, "normalized.wav"))
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise HTTPException(422, "Não foi possível obter o áudio deste vídeo") from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc

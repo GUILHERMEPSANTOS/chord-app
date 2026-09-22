@@ -6,6 +6,7 @@ public sealed class Music
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string FileName { get; set; } = "";
+    public string? SourceUrl { get; set; }
     public double DurationSeconds { get; set; }
     public string? Key { get; set; }
     public AnalysisStatus Status { get; set; } = AnalysisStatus.Pending;

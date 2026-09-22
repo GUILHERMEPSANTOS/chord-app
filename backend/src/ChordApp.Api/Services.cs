@@ -5,10 +5,29 @@ using ChordApp.Domain;
 using Microsoft.EntityFrameworkCore;
 
 public sealed record CorrectChord(string Chord);
+public sealed record YouTubeRequest(string Url);
 public sealed record ChordResponse(Guid Id, double StartTime, double EndTime, string Chord, double? Confidence, bool Corrected);
-public sealed record MusicResponse(Guid Id, string FileName, double DurationSeconds, string? Key, string Status, string? Error, List<ChordResponse> Chords);
-public sealed record ProcessResult(string? Key, List<ProcessChord> Chords);
+public sealed record MusicResponse(Guid Id, string FileName, string? SourceUrl, double DurationSeconds, string? Key, string Status, string? Error, List<ChordResponse> Chords);
+public sealed record ProcessResult(string? Key, double? DurationSeconds, List<ProcessChord> Chords);
 public sealed record ProcessChord(double StartTime, double EndTime, string Chord, double? Confidence);
+
+public static class YouTubeUrls
+{
+    public static string? Canonical(string? value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || uri.Port != 443) return null;
+        var host = uri.Host.ToLowerInvariant();
+        string? videoId = null;
+        if (host is "youtu.be" or "www.youtu.be") videoId = uri.AbsolutePath.Trim('/');
+        else if (host is "youtube.com" or "www.youtube.com" or "m.youtube.com")
+        {
+            if (uri.AbsolutePath == "/watch")
+                videoId = uri.Query.TrimStart('?').Split('&').Select(p => p.Split('=', 2)).FirstOrDefault(p => p.Length == 2 && p[0] == "v")?.ElementAtOrDefault(1);
+            else if (uri.AbsolutePath.StartsWith("/shorts/")) videoId = uri.AbsolutePath[8..].Trim('/');
+        }
+        return videoId is not null && System.Text.RegularExpressions.Regex.IsMatch(videoId, "^[A-Za-z0-9_-]{11}$") ? $"https://www.youtube.com/watch?v={videoId}" : null;
+    }
+}
 
 public sealed class MusicDb(DbContextOptions<MusicDb> options) : DbContext(options)
 {
@@ -67,20 +86,29 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
             var music = await db.Musics.FirstOrDefaultAsync(m => m.Status == AnalysisStatus.Pending, stoppingToken);
             if (music is null) { await Task.Delay(1500, stoppingToken); continue; }
             var path = TempFiles.Find(music.Id);
-            if (path is null) { music.Status = AnalysisStatus.Failed; music.Error = "Arquivo temporário indisponível."; await db.SaveChangesAsync(stoppingToken); continue; }
+            if (path is null && music.SourceUrl is null) { music.Status = AnalysisStatus.Failed; music.Error = "Arquivo temporário indisponível."; await db.SaveChangesAsync(stoppingToken); continue; }
             music.Status = AnalysisStatus.Processing;
             await db.SaveChangesAsync(stoppingToken);
             try
             {
-                using var form = new MultipartFormDataContent();
-                await using var input = File.OpenRead(path);
-                using var content = new StreamContent(input);
-                form.Add(content, "file", Path.GetFileName(path));
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
                 timeout.CancelAfter(TimeSpan.FromMinutes(10));
-                var response = await clients.CreateClient("processor").PostAsync("/analyze", form, timeout.Token);
+                HttpResponseMessage response;
+                if (music.SourceUrl is not null)
+                    response = await clients.CreateClient("processor").PostAsJsonAsync("/analyze-youtube", new { url = music.SourceUrl }, timeout.Token);
+                else
+                {
+                    using var form = new MultipartFormDataContent();
+                    await using var input = File.OpenRead(path!);
+                    using var content = new StreamContent(input);
+                    form.Add(content, "file", Path.GetFileName(path!));
+                    response = await clients.CreateClient("processor").PostAsync("/analyze", form, timeout.Token);
+                }
+                using (response)
+                {
                 response.EnsureSuccessStatusCode();
                 var result = await response.Content.ReadFromJsonAsync<ProcessResult>(new JsonSerializerOptions(JsonSerializerDefaults.Web), timeout.Token) ?? throw new InvalidDataException("Resposta vazia.");
+                if (result.DurationSeconds is double measured) music.DurationSeconds = measured;
                 foreach (var c in result.Chords)
                 {
                     ChordRules.Validate(c.StartTime, c.EndTime, music.DurationSeconds, c.Chord);
@@ -88,6 +116,7 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                 }
                 music.Key = result.Key;
                 music.Status = AnalysisStatus.Completed;
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
             {

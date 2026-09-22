@@ -26,7 +26,17 @@ app.MapGet("/api/musics", async (MusicDb db) => await db.Musics.AsNoTracking().O
 app.MapGet("/api/musics/{id:guid}", async (Guid id, MusicDb db) =>
 {
     var m = await db.Musics.AsNoTracking().Include(x => x.Chords).FirstOrDefaultAsync(x => x.Id == id);
-    return m is null ? Results.NotFound() : Results.Ok(new MusicResponse(m.Id, m.FileName, m.DurationSeconds, m.Key, m.Status.ToString(), m.Error, m.Chords.OrderBy(c => c.StartTime).Select(c => new ChordResponse(c.Id, c.StartTime, c.EndTime, c.Chord, c.Confidence, c.Corrected)).ToList()));
+    return m is null ? Results.NotFound() : Results.Ok(new MusicResponse(m.Id, m.FileName, m.SourceUrl, m.DurationSeconds, m.Key, m.Status.ToString(), m.Error, m.Chords.OrderBy(c => c.StartTime).Select(c => new ChordResponse(c.Id, c.StartTime, c.EndTime, c.Chord, c.Confidence, c.Corrected)).ToList()));
+});
+app.MapPost("/api/musics/youtube", async (YouTubeRequest body, MusicDb db, CancellationToken ct) =>
+{
+    var canonical = YouTubeUrls.Canonical(body.Url);
+    if (canonical is null) return Results.BadRequest(new { error = "URL de vídeo do YouTube inválida." });
+    var id = Guid.NewGuid();
+    var music = new Music { Id = id, FileName = $"YouTube {canonical.Split('=')[1]}", SourceUrl = canonical };
+    db.Musics.Add(music);
+    await db.SaveChangesAsync(ct);
+    return Results.Accepted($"/api/musics/{id}", new { id, status = "Pending" });
 });
 app.MapPost("/api/musics", async (HttpRequest request, MusicDb db, CancellationToken ct) =>
 {
