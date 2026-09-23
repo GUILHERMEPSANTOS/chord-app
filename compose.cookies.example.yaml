@@ -1,0 +1,11 @@
+services:
+  processor:
+    environment:
+      YOUTUBE_COOKIES_FILE: /run/secrets/youtube-cookies.txt
+    volumes:
+      - type: bind
+        source: ./secrets/youtube-cookies.txt
+        target: /run/secrets/youtube-cookies.txt
+        read_only: true
+        bind:
+          create_host_path: false

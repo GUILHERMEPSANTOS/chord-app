@@ -66,6 +66,26 @@ def canonical_youtube_url(value: str) -> str | None:
     else:
         return None
     return f"https://www.youtube.com/watch?v={video_id}" if video_id and re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) else None
+
+
+def youtube_download_error(stderr: str) -> str:
+    message = stderr.lower()
+    if "http error 429" in message or "sign in to confirm you" in message or "not a bot" in message:
+        return "O YouTube exigiu verificação para obter este áudio. Configure cookies locais do YouTube ou envie um arquivo MP3/WAV."
+    if "duration" in message and ("filter" in message or "900" in message):
+        return "O vídeo ultrapassa o limite de 15 minutos."
+    if "max-filesize" in message or "larger than max-filesize" in message:
+        return "O áudio ultrapassa o limite de 30 MB."
+    return "Não foi possível obter o áudio deste vídeo. Verifique se ele está público e disponível."
+
+
+def youtube_cookie_args() -> list[str]:
+    path = os.environ.get("YOUTUBE_COOKIES_FILE")
+    if not path:
+        return []
+    if not Path(path).is_file():
+        raise ValueError("Arquivo de cookies do YouTube configurado, mas não encontrado no processador.")
+    return ["--cookies", path]
 NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 ENHARMONIC = {"Db": "C#", "Eb": "D#", "Gb": "F#", "Ab": "G#", "Bb": "A#", "Cb": "B", "B#": "C", "Fb": "E", "E#": "F"}
 MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
@@ -202,7 +222,11 @@ async def analyze_youtube(request: YouTubeRequest):
         raise HTTPException(400, "URL do YouTube inválida")
     set_progress(request.jobId, 5, "Obtendo áudio do YouTube")
     with tempfile.TemporaryDirectory() as directory:
-        command = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--match-filter", "duration <= 900", "--max-filesize", "30M", "--js-runtimes", "node", "-f", "bestaudio", "-o", os.path.join(directory, "source.%(ext)s"), url]
+        try:
+            cookie_args = youtube_cookie_args()
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        command = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--match-filter", "duration <= 900", "--max-filesize", "30M", "--js-runtimes", "node", *cookie_args, "-f", "bestaudio", "-o", os.path.join(directory, "source.%(ext)s"), url]
         try:
             await asyncio.to_thread(subprocess.run, command, check=True, timeout=180, capture_output=True)
             sources = [p for p in Path(directory).glob("source.*") if p.is_file() and p.suffix != ".part"]
@@ -210,7 +234,10 @@ async def analyze_youtube(request: YouTubeRequest):
                 raise HTTPException(422, "Arquivo indisponível ou maior que 30 MB")
             set_progress(request.jobId, 12, "Áudio obtido")
             return await asyncio.to_thread(convert_and_analyze, str(sources[0]), os.path.join(directory, "normalized.wav"), request.jobId)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            raise HTTPException(422, "Não foi possível obter o áudio deste vídeo") from exc
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr or ""
+            raise HTTPException(422, youtube_download_error(stderr)) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise HTTPException(422, "A obtenção do áudio demorou demais; tente novamente.") from exc
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc

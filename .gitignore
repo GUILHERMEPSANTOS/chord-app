@@ -11,4 +11,6 @@
 *.tsbuildinfo
 benchmark/private/
 benchmark/results/
+secrets/
+compose.cookies.yaml
 .vs
