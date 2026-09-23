@@ -6,6 +6,12 @@ from app import main
 
 
 class ProgressTests(unittest.TestCase):
+    def test_youtube_bot_error_is_explained_without_exposing_diagnostics(self):
+        diagnostic = "HTTP Error 429: Too Many Requests; Sign in to confirm you are not a bot; token=secret"
+        message = main.youtube_download_error(diagnostic)
+        self.assertIn("verificação", message)
+        self.assertNotIn("secret", message)
+
     def test_dual_analysis_keeps_results_separate(self):
         from benchmark.segments import Segment
 

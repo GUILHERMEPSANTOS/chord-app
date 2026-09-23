@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using ChordApp.Api.Contracts.Processor;
 using ChordApp.Domain;
@@ -58,6 +59,13 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                 }
                 using (response)
                 {
+                    if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                    {
+                        var body = await response.Content.ReadAsStringAsync(timeout.Token);
+                        music.Status = AnalysisStatus.Failed;
+                        music.Error = ReadProcessorError(body);
+                        continue;
+                    }
                     response.EnsureSuccessStatusCode();
                     var result = await response.Content.ReadFromJsonAsync<ProcessResult>(new JsonSerializerOptions(JsonSerializerDefaults.Web), timeout.Token) ?? throw new InvalidDataException("Resposta vazia.");
                     if (result.DurationSeconds is double measured) music.DurationSeconds = measured;
@@ -101,5 +109,20 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                 TempFiles.Delete(music.Id);
             }
         }
+    }
+
+    private static string ReadProcessorError(string body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var detail = document.RootElement.GetProperty("detail");
+            if (detail.ValueKind == JsonValueKind.String && detail.GetString() is { Length: > 0 } message)
+                return message.Length <= 300 ? message : message[..300];
+        }
+        catch (JsonException) { }
+        catch (KeyNotFoundException) { }
+
+        return "Não foi possível processar este áudio. Consulte os logs do processador.";
     }
 }
