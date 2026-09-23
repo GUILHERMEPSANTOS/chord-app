@@ -1,4 +1,5 @@
 services:
+  # Banco: guarda músicas, resultados por modelo e correções manuais.
   db:
     image: postgres:17-alpine
     ports:
@@ -13,6 +14,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U chordapp -d chordapp"]
       interval: 3s
       retries: 20
+  # Processador Python: baixa/extrai áudio temporário, normaliza e executa os modelos.
   processor:
     build: ./processor
     restart: unless-stopped
@@ -22,6 +24,7 @@ services:
       resources:
         limits:
           memory: 4G
+  # API .NET: valida pedidos, coordena tarefas, consulta o banco e atende o navegador.
   api:
     build:
       context: .
@@ -39,6 +42,7 @@ services:
         condition: service_healthy
       processor:
         condition: service_started
+  # Interface Next.js: upload, seleção de modelo, player, progresso e edição de acordes.
   web:
     build: ./web
     ports:
@@ -48,4 +52,5 @@ services:
     depends_on:
       - api
 volumes:
+  # Persiste somente os dados do PostgreSQL entre reinícios.
   postgres_data:

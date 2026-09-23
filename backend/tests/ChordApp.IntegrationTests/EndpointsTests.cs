@@ -1,11 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using ChordApp.Domain;
+using ChordApp.Api.Middleware;
 using ChordApp.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 public sealed class EndpointsTests : IClassFixture<TestFactory>
@@ -114,5 +116,30 @@ public sealed class TestFactory : WebApplicationFactory<Program>
             services.AddDbContext<MusicDb>(o => o.UseInMemoryDatabase(_databaseName));
             services.RemoveAll<IHostedService>();
         });
+    }
+}
+
+public sealed class GlobalExceptionMiddlewareTests
+{
+    [Fact]
+    public async Task UnexpectedExceptionReturnsSafeJsonAndTraceId()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = "GET";
+        context.Request.Path = "/test";
+        context.TraceIdentifier = "test-trace";
+        context.Response.Body = new MemoryStream();
+        var middleware = new GlobalExceptionMiddleware(
+            _ => throw new InvalidOperationException("segredo interno"),
+            NullLogger<GlobalExceptionMiddleware>.Instance);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        context.Response.Body.Position = 0;
+        var json = await System.Text.Json.JsonDocument.ParseAsync(context.Response.Body);
+        Assert.Equal("Erro interno inesperado.", json.RootElement.GetProperty("error").GetString());
+        Assert.Equal("test-trace", json.RootElement.GetProperty("traceId").GetString());
+        Assert.DoesNotContain("segredo interno", json.RootElement.ToString());
     }
 }

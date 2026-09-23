@@ -17,7 +17,7 @@ class LvChordiaDetector:
     name = "lv-chordia"
 
     def predict(self, normalized_wav: Path) -> list[Segment]:
-        from app.main import simplify
+        from app.chords import simplify
         from lv_chordia.chord_recognition import chord_recognition
 
         raw = chord_recognition(audio_path=str(normalized_wav), chord_dict_name="submission")

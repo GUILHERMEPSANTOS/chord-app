@@ -13,6 +13,33 @@ docker compose up --build
 Abra http://localhost:3000. Na primeira construção, PyTorch e os pesos do modelo podem tornar o download demorado. A API fica em http://localhost:5000/health e o processador em sua rede interna do Compose.
 Cada novo áudio é analisado pelo `lv-chordia` (cinco redes) e pelo BTC-ISMIR19 em CPU. O processamento pode levar vários minutos. O BTC é experimental; suas previsões não são combinadas automaticamente com as do `lv-chordia`.
 
+### Função de cada serviço
+
+| Serviço | Responsabilidade |
+| --- | --- |
+| `web` | Mostra o player, o progresso e os acordes; envia pedidos à API. |
+| `api` | Valida upload e URL, cria a análise, consulta e atualiza o PostgreSQL e chama o processador. |
+| `processor` | Extrai e normaliza áudio com yt-dlp/FFmpeg, executa os detectores e devolve tom e acordes. Veja o [guia do processador](processor/README.md). |
+| `db` | PostgreSQL que persiste músicas, resultados e correções. |
+| `postgres_data` | Volume Docker dos dados do banco. O áudio temporário não fica nesse volume. |
+
+O middleware da API registra erros inesperados nas requisições e retorna HTTP 500 com um `traceId`, sem enviar detalhes internos ao navegador. Falhas do processamento em segundo plano são registradas pelo worker e aparecem no estado da análise.
+
+### Serviços da API e da aplicação
+
+| Classe | Função |
+| --- | --- |
+| `AudioFileSourceUpload` | Valida e recebe o arquivo, cria a análise pendente e mantém o áudio temporário até o processamento. |
+| `MusicSubmissionYoutube` | Valida a URL do YouTube e cria a análise pendente. |
+| `AnalysisWorker` | Busca análises pendentes, chama o processador Python e salva resultados ou falhas. |
+| `ProcessorProgressReader` | Consulta o progresso em memória do processador para a tela. |
+| `ListMusics` | Lista as análises salvas. |
+| `GetMusicDetails` | Monta os detalhes da música com estado, progresso e acordes do modelo selecionado. |
+| `SelectMusicModel` | Alterna o modelo exibido quando há resultados salvos para ele. |
+| `CorrectMusicChord` | Aplica e persiste a correção manual de um acorde. |
+
+As rotas HTTP estão em `MusicEndpointExtensions`, e `GlobalExceptionMiddleware` cuida dos erros inesperados dessas rotas.
+
 ## Contrato
 
 - `POST /api/musics`: formulário `file` com MP3/WAV, até 30 MB e duração entre 1 e 900 segundos; `model` opcional (`lv-chordia` ou `btc-ismir19`) escolhe a visualização inicial. Retorna `202` e o `id`.

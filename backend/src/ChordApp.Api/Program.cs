@@ -1,5 +1,6 @@
 using ChordApp.Api;
 using ChordApp.Api.Extensions;
+using ChordApp.Api.Middleware;
 using ChordApp.Api.Services;
 using ChordApp.Application.CorrectChord;
 using ChordApp.Application.QueryMusic;
@@ -33,6 +34,7 @@ builder.Services.AddCors(options =>
 
 Directory.CreateDirectory(TempFiles.Root);
 var app = builder.Build();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseCors();
 await app.InitializeMusicDatabaseAsync();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
