@@ -68,6 +68,35 @@ public sealed class EndpointsTests : IClassFixture<TestFactory>
         var saved = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         Assert.Equal("Cmaj7", saved.GetProperty("chord").GetString());
         Assert.True(saved.GetProperty("corrected").GetBoolean());
+        var unavailable = await _client.PutAsJsonAsync($"/api/musics/{music.Id}/model", new { model = RecognitionModels.BtcIsmir19 });
+        Assert.Equal(HttpStatusCode.BadRequest, unavailable.StatusCode);
+    }
+
+    [Fact]
+    public async Task SwitchingModelPreservesSeparateCorrections()
+    {
+        var music = new Music { DurationSeconds = 10, Status = AnalysisStatus.Completed };
+        var lv = new ChordSegment { MusicId = music.Id, Model = RecognitionModels.LvChordia, StartTime = 0, EndTime = 5, Chord = "C" };
+        var btc = new ChordSegment { MusicId = music.Id, Model = RecognitionModels.BtcIsmir19, StartTime = 0, EndTime = 5, Chord = "G" };
+        music.Chords.AddRange([lv, btc]);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<MusicDb>();
+            db.Musics.Add(music);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await _client.PutAsJsonAsync($"/api/musics/{music.Id}/chords/{lv.Id}", new { chord = "Cmaj7" })).StatusCode);
+        var switched = await _client.PutAsJsonAsync($"/api/musics/{music.Id}/model", new { model = RecognitionModels.BtcIsmir19 });
+        Assert.Equal(HttpStatusCode.OK, switched.StatusCode);
+        var btcView = await switched.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(RecognitionModels.BtcIsmir19, btcView.GetProperty("selectedModel").GetString());
+        Assert.Equal("G", btcView.GetProperty("chords")[0].GetProperty("chord").GetString());
+
+        var back = await _client.PutAsJsonAsync($"/api/musics/{music.Id}/model", new { model = RecognitionModels.LvChordia });
+        var lvView = await back.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal("Cmaj7", lvView.GetProperty("chords")[0].GetProperty("chord").GetString());
+        Assert.True(lvView.GetProperty("chords")[0].GetProperty("corrected").GetBoolean());
     }
 
     private sealed record CreatedJob(Guid Id, string Status);

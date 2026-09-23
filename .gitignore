@@ -8,6 +8,7 @@
 .env
 *.mp3
 *.wav
+*.tsbuildinfo
 benchmark/private/
 benchmark/results/
 .vs

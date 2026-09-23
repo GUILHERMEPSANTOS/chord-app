@@ -61,17 +61,30 @@ public sealed class AnalysisWorker(IServiceScopeFactory scopes, IHttpClientFacto
                     response.EnsureSuccessStatusCode();
                     var result = await response.Content.ReadFromJsonAsync<ProcessResult>(new JsonSerializerOptions(JsonSerializerDefaults.Web), timeout.Token) ?? throw new InvalidDataException("Resposta vazia.");
                     if (result.DurationSeconds is double measured) music.DurationSeconds = measured;
-                    var segments = new List<ChordSegment>();
-                    foreach (var c in result.Chords)
+                    var modelResults = result.Results ?? new Dictionary<string, List<ProcessChord>>
                     {
-                        if (!double.IsFinite(c.StartTime) || !double.IsFinite(c.EndTime)) throw new InvalidDataException("Tempo inválido no resultado.");
-                        var start = Math.Max(0, c.StartTime);
-                        var end = Math.Min(music.DurationSeconds, c.EndTime);
-                        if (end <= start) continue;
-                        ChordRules.Validate(start, end, music.DurationSeconds, c.Chord);
-                        segments.Add(new ChordSegment { MusicId = music.Id, StartTime = start, EndTime = end, Chord = c.Chord, Confidence = c.Confidence });
+                        [RecognitionModels.LvChordia] = result.Chords
+                    };
+                    var segments = new List<ChordSegment>();
+                    foreach (var (model, chords) in modelResults)
+                    {
+                        if (!RecognitionModels.IsAllowed(model)) throw new InvalidDataException("Modelo desconhecido no resultado.");
+                        foreach (var c in chords)
+                        {
+                            if (!double.IsFinite(c.StartTime) || !double.IsFinite(c.EndTime)) throw new InvalidDataException("Tempo inválido no resultado.");
+                            var start = Math.Max(0, c.StartTime);
+                            var end = Math.Min(music.DurationSeconds, c.EndTime);
+                            if (end <= start) continue;
+                            ChordRules.Validate(start, end, music.DurationSeconds, c.Chord);
+                            segments.Add(new ChordSegment { MusicId = music.Id, Model = model, StartTime = start, EndTime = end, Chord = c.Chord, Confidence = c.Confidence });
+                        }
                     }
                     db.Chords.AddRange(segments);
+                    if (!segments.Any(segment => segment.Model == music.SelectedModel))
+                        music.SelectedModel = RecognitionModels.LvChordia;
+                    music.BtcError = result.ModelErrors?.GetValueOrDefault(RecognitionModels.BtcIsmir19) is not null
+                        ? "BTC-ISMIR19 não concluiu a análise deste áudio. Consulte os logs do processador."
+                        : null;
                     music.Key = result.Key;
                     music.Status = AnalysisStatus.Completed;
                 }

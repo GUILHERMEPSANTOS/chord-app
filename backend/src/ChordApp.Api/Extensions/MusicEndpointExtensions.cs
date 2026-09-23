@@ -26,7 +26,7 @@ public static class MusicEndpointExtensions
             IMusicSubmission<YouTubeSource> submission,
             CancellationToken cancellationToken) =>
         {
-            var result = await submission.SubmitAsync(new YouTubeSource(body.Url), cancellationToken);
+            var result = await submission.SubmitAsync(new YouTubeSource(body.Url, body.Model), cancellationToken);
             return ToHttpResult(result, "URL de vídeo do YouTube inválida.");
         });
 
@@ -41,9 +41,12 @@ public static class MusicEndpointExtensions
             }
 
             IFormFile? file;
+            string? model;
             try
             {
-                file = (await request.ReadFormAsync(cancellationToken)).Files.GetFile("file");
+                var form = await request.ReadFormAsync(cancellationToken);
+                file = form.Files.GetFile("file");
+                model = form["model"].FirstOrDefault();
             }
             catch (InvalidDataException)
             {
@@ -56,13 +59,27 @@ public static class MusicEndpointExtensions
             }
 
             await using var content = file.OpenReadStream();
-            var source = new AudioFileSource(content, file.FileName, file.Length);
+            var source = new AudioFileSource(content, file.FileName, file.Length, model ?? "lv-chordia");
             var result = await submission.SubmitAsync(source, cancellationToken);
 
             return ToHttpResult(
                 result,
                 "Arquivo inválido, fora do tamanho permitido, formato não suportado ou duração incorreta.");
         }).DisableAntiforgery();
+
+        app.MapPut("/api/musics/{id:guid}/model", async (
+            Guid id,
+            SelectModelRequest body,
+            SelectMusicModel selection,
+            GetMusicDetails query,
+            CancellationToken cancellationToken) =>
+        {
+            var status = await selection.ExecuteAsync(id, body.Model, cancellationToken);
+            if (status == SelectMusicModelStatus.NotFound) return Results.NotFound();
+            if (status == SelectMusicModelStatus.Unavailable)
+                return Results.BadRequest(new { error = "Modelo indisponível para esta música." });
+            return Results.Ok(await query.ExecuteAsync(id, cancellationToken));
+        });
 
         app.MapPut("/api/musics/{id:guid}/chords/{chordId:guid}", async (
             Guid id,

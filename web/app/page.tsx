@@ -5,13 +5,15 @@ import ChordDiagram from '../components/ChordDiagram';
 import YouTubePlayer, { type YouTubeControls } from '../components/YouTubePlayer';
 
 type Chord = { id: string; startTime: number; endTime: number; chord: string; confidence: number | null; corrected: boolean };
-type Music = { id: string; fileName: string; sourceUrl: string | null; durationSeconds: number; key: string | null; status: string; error: string | null; progressPercent: number; progressStage: string | null; chords: Chord[] };
+type Model = 'lv-chordia' | 'btc-ismir19';
+type Music = { id: string; fileName: string; sourceUrl: string | null; durationSeconds: number; key: string | null; status: string; error: string | null; progressPercent: number; progressStage: string | null; selectedModel: Model; availableModels: Model[]; btcError: string | null; chords: Chord[] };
 type LibraryItem = Pick<Music, 'id' | 'fileName' | 'status'>;
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const CHORDS = ['N', ...NOTES.flatMap(note => [note, `${note}m`, `${note}7`, `${note}maj7`, `${note}m7`, `${note}dim`, `${note}dim7`, `${note}m7b5`])];
 const fmt = (seconds: number) => `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 const statusLabel: Record<string, string> = { Pending: 'Na fila', Processing: 'Analisando', Completed: 'Concluída', Failed: 'Falhou' };
+const modelLabel: Record<Model, string> = { 'lv-chordia': 'lv-chordia', 'btc-ismir19': 'BTC-ISMIR19 (experimental)' };
 
 function ChordCard({ item, featured }: { item?: Chord; featured?: boolean }) {
   return <div className={featured ? 'chord-card featured' : 'chord-card'}>
@@ -33,6 +35,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [initialModel, setInitialModel] = useState<Model>('lv-chordia');
   const [youtubeControls, setYoutubeControls] = useState<YouTubeControls | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -79,7 +82,7 @@ export default function Home() {
     if (!file) return;
     setBusy(true); setMessage('');
     try {
-      const form = new FormData(); form.append('file', file);
+      const form = new FormData(); form.append('file', file); form.append('model', initialModel);
       const response = await fetch(`${API}/api/musics`, { method: 'POST', body: form });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? 'Falha no upload');
@@ -90,7 +93,7 @@ export default function Home() {
   async function analyzeYouTube() {
     setBusy(true); setMessage(''); setMusic(null); setCurrent(0); setPlaying(false); setFile(null); setAudioUrl(null);
     try {
-      const response = await fetch(`${API}/api/musics/youtube`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: youtubeUrl }) });
+      const response = await fetch(`${API}/api/musics/youtube`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: youtubeUrl, model: initialModel }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? 'Não foi possível adicionar o vídeo');
       await loadCreated(data.id);
@@ -105,6 +108,17 @@ export default function Home() {
       const updated: Chord = await response.json();
       setMusic({ ...music, chords: music.chords.map(segment => segment.id === updated.id ? updated : segment) });
     } catch { setMessage('Não foi possível salvar a correção.'); }
+  }
+  async function changeModel(model: Model) {
+    if (!music || model === music.selectedModel) return;
+    setBusy(true); setMessage('');
+    try {
+      const response = await fetch(`${API}/api/musics/${music.id}/model`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Não foi possível trocar o modelo.');
+      setMusic(data);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Não foi possível trocar o modelo.'); }
+    finally { setBusy(false); }
   }
   async function openMusic(id: string) {
     try {
@@ -134,6 +148,7 @@ export default function Home() {
     <div className="workspace">
       <aside className="sidebar">
         <div className="sidebar-heading"><span className="overline">BIBLIOTECA</span><h1>Suas músicas</h1><p>Envie um áudio ou cole um link para acompanhar os acordes.</p></div>
+        <section className="input-card"><label htmlFor="initial-model">Modelo inicial</label><select id="initial-model" value={initialModel} onChange={event => setInitialModel(event.target.value as Model)} disabled={busy}><option value="lv-chordia">lv-chordia</option><option value="btc-ismir19">BTC-ISMIR19 (experimental)</option></select><small>Os dois modelos analisam o áudio uma vez. Depois você pode alternar sem reenviar.</small></section>
         <section className="input-card"><label htmlFor="audio">Arquivo de áudio</label><input id="audio" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={event => selectFile(event.target.files?.[0] ?? null)} /><small>MP3 ou WAV · até 30 MB · 15 min</small><button className="primary-button" disabled={!file || busy} onClick={upload}>{busy ? 'Enviando…' : 'Analisar arquivo'}</button></section>
         <section className="input-card"><label htmlFor="youtube-url">Vídeo do YouTube</label><input id="youtube-url" type="url" placeholder="Cole a URL do vídeo" value={youtubeUrl} onChange={event => setYoutubeUrl(event.target.value)} /><button className="secondary-button" disabled={!youtubeUrl || busy} onClick={analyzeYouTube}>Analisar vídeo</button></section>
         {message && <p className="alert" role="alert">{message}</p>}
@@ -142,7 +157,7 @@ export default function Home() {
       </aside>
       <section className="stage">
         {music ? <>
-          <div className="track-heading"><span className="overline">AGORA ANALISANDO / REPRODUZINDO</span><h2>{music.fileName}</h2><p><span className={`status-dot ${music.status.toLowerCase()}`} />{statusLabel[music.status] ?? music.status} <span className="separator">·</span> Tom estimado: <strong>{music.key ?? '—'}</strong> <span className="separator">·</span> {music.durationSeconds ? fmt(music.durationSeconds) : '—'}</p></div>
+          <div className="track-heading"><span className="overline">AGORA ANALISANDO / REPRODUZINDO</span><h2>{music.fileName}</h2><p><span className={`status-dot ${music.status.toLowerCase()}`} />{statusLabel[music.status] ?? music.status} <span className="separator">·</span> Tom estimado: <strong>{music.key ?? '—'}</strong> <span className="separator">·</span> {music.durationSeconds ? fmt(music.durationSeconds) : '—'}</p>{music.status === 'Completed' && <div className="model-picker"><label htmlFor="result-model">Acordes gerados por</label><select id="result-model" value={music.selectedModel} disabled={busy || music.availableModels.length < 2} onChange={event => changeModel(event.target.value as Model)}>{music.availableModels.map(model => <option key={model} value={model}>{modelLabel[model]}</option>)}</select>{music.btcError && <small>{music.btcError}</small>}</div>}</div>
           {music.status === 'Pending' || music.status === 'Processing' ? <div className="progress-panel" role="status" aria-live="polite"><span className="overline">PROCESSAMENTO</span><strong>{music.status === 'Pending' ? 'Na fila' : `${music.progressPercent ?? 2}%`}</strong><p>{music.status === 'Pending' ? 'A análise começará em instantes.' : music.progressStage ?? 'Preparando o áudio...'}</p><div className="progress-track"><span style={{ width: `${music.status === 'Pending' ? 0 : music.progressPercent ?? 2}%` }} /></div><small>Progresso aproximado por etapas do modelo</small></div> : null}
           {music.status === 'Failed' && <div className="failure-panel" role="alert">{music.error ?? 'Não foi possível concluir esta análise.'}</div>}
           {music.status === 'Completed' && <><div className="chord-stage"><ChordCard item={active} featured /><div className="next-chords"><ChordCard item={upcoming[0]} /><ChordCard item={upcoming[1]} /></div></div><div className="timeline-toggle"><span>{music.chords.length} segmentos identificados</span><button onClick={() => setShowTimeline(value => !value)}>{showTimeline ? 'Ocultar acordes' : 'Ver todos os acordes'}</button></div>{showTimeline && <div className="chord-list">{music.chords.map((item, index) => <div key={item.id} className={index === activeIndex ? 'chord-row current-row' : 'chord-row'}><button className="time-link" onClick={() => seek(item.startTime)}>{fmt(item.startTime)} – {fmt(item.endTime)}</button><select aria-label={`Acorde em ${fmt(item.startTime)}`} value={item.chord} onChange={event => changeChord(item, event.target.value)}>{CHORDS.map(chord => <option key={chord} value={chord}>{chord}</option>)}</select><span>{item.corrected ? 'Corrigido' : ''}</span></div>)}</div>}</>}

@@ -21,6 +21,12 @@ public sealed class MusicRepository(MusicDb musicDb) : IMusicRepository
             .FirstOrDefaultAsync(music => music.Id == id, cancellationToken);
     }
 
+    public Task<Music?> GetWithChordsForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return musicDb.Musics.Include(music => music.Chords)
+            .FirstOrDefaultAsync(music => music.Id == id, cancellationToken);
+    }
+
     public Task<ChordSegment?> GetChordAsync(
         Guid musicId,
         Guid chordId,

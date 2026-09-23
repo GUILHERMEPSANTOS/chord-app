@@ -11,33 +11,34 @@ docker compose up --build
 ```
 
 Abra http://localhost:3000. Na primeira construção, PyTorch e os pesos do modelo podem tornar o download demorado. A API fica em http://localhost:5000/health e o processador em sua rede interna do Compose.
-O modelo executa um conjunto de cinco redes em CPU e pode levar vários minutos até para áudios curtos. A latência em músicas completas precisa ser medida no seu computador antes de usar em produção.
+Cada novo áudio é analisado pelo `lv-chordia` (cinco redes) e pelo BTC-ISMIR19 em CPU. O processamento pode levar vários minutos. O BTC é experimental; suas previsões não são combinadas automaticamente com as do `lv-chordia`.
 
 ## Contrato
 
-- `POST /api/musics`: formulário `file` com MP3/WAV, até 30 MB e duração entre 1 e 900 segundos. Retorna `202` e o `id`.
-- `POST /api/musics/youtube`: corpo `{ "url": "https://www.youtube.com/watch?v=..." }` para vídeo público. Retorna `202` e o `id`.
-- `GET /api/musics/{id}`: estado `Pending`, `Processing`, `Completed` ou `Failed`, `progressPercent`, `progressStage`, tom estimado e segmentos.
+- `POST /api/musics`: formulário `file` com MP3/WAV, até 30 MB e duração entre 1 e 900 segundos; `model` opcional (`lv-chordia` ou `btc-ismir19`) escolhe a visualização inicial. Retorna `202` e o `id`.
+- `POST /api/musics/youtube`: corpo `{ "url": "https://www.youtube.com/watch?v=...", "model": "lv-chordia" }` para vídeo público. Retorna `202` e o `id`.
+- `GET /api/musics/{id}`: estado, progresso, tom, `selectedModel`, `availableModels`, `btcError` e segmentos do modelo selecionado.
+- `PUT /api/musics/{id}/model`: corpo `{ "model": "btc-ismir19" }` para alternar entre resultados já salvos. Retorna `400` se esse modelo não tem resultado para a música.
 - `GET /api/musics`: análises salvas.
 - `PUT /api/musics/{id}/chords/{chordId}`: corpo `{ "chord": "Am7" }` para correção.
 
 Os segmentos têm `startTime`, `endTime`, `chord` e `confidence`. `confidence` fica `null` porque o modelo escolhido não fornece probabilidade calibrada de acerto por segmento. `N` representa ausência de acorde.
-Novas análises usam o vocabulário `submission` do `lv-chordia`. A tela aceita tríades maiores e menores; sétima dominante (`C7`), maior (`Cmaj7`) e menor (`Cm7`); diminuto (`Cdim`), diminuto com sétima (`Cdim7`) e meio diminuto (`Cm7b5`). Outros tipos detectados são reduzidos a maior/menor quando a qualidade permite, ou a `N`. As análises antigas permanecem como foram salvas. O vocabulário maior oferece mais detalhes, mas a melhoria de precisão ainda precisa ser medida com músicas anotadas.
-`progressPercent` mostra marcos do download, normalização e cinco passagens do modelo. É uma porcentagem aproximada das etapas concluídas, não uma previsão do tempo restante. A tela destaca o acorde atual, mostra os próximos acordes e permite corrigir cada segmento na lista.
+Novas análises usam o vocabulário `submission` do `lv-chordia` e os pesos de vocabulário amplo do BTC. A tela aceita tríades maiores e menores; sétima dominante (`C7`), maior (`Cmaj7`) e menor (`Cm7`); diminuto (`Cdim`), diminuto com sétima (`Cdim7`) e meio diminuto (`Cm7b5`). Outros tipos detectados são reduzidos a maior/menor quando a qualidade permite, ou a `N`. As análises antigas permanecem atribuídas ao `lv-chordia`. As correções são independentes por modelo. Se o BTC falhar, o resultado do `lv-chordia` continua disponível e a tela informa que o BTC não concluiu.
+`progressPercent` mostra marcos do download, normalização e execução dos dois modelos. É uma porcentagem aproximada das etapas concluídas, não uma previsão do tempo restante.
 
 ## Dados e limitações
 
-O áudio é mantido só até a análise terminar. A API salva nome, URL canônica do YouTube quando aplicável, duração, tom, acordes e correções no PostgreSQL. Para reproduzir uma análise antiga de arquivo, selecione novamente o arquivo local. Vídeos são reproduzidos no player incorporado oficial. A estimativa de tom usa perfis cromáticos e pode errar em músicas com modulações.
+O áudio é mantido só até a análise terminar. A API salva nome, URL canônica do YouTube quando aplicável, duração, tom, acordes separados por modelo e correções no PostgreSQL. Para reproduzir uma análise antiga de arquivo, selecione novamente o arquivo local. Vídeos são reproduzidos no player incorporado oficial. A estimativa de tom usa perfis cromáticos e pode errar em músicas com modulações.
 
 O processamento de YouTube usa `yt-dlp` localmente para extrair temporariamente o áudio de vídeos públicos; vídeos privados, protegidos, transmissões ao vivo e restrições geográficas podem falhar. Esta função não transfere o áudio para o navegador nem o armazena após a análise. Uso pessoal não garante permissão para baixar conteúdo: verifique os [Termos do YouTube](https://www.youtube.com/t/terms) e os direitos do vídeo antes de usá-la. A disponibilidade da extração pode mudar quando o YouTube alterar seus mecanismos.
 
 Este MVP é local e não inclui contas de usuário. Não publique a API na Internet sem autenticação, autorização por música, limite de requisições e armazenamento temporário durável. O worker é único por instância; múltiplas réplicas exigem fila com reserva atômica de tarefas. Em reinício durante processamento, o áudio temporário pode ser perdido e a tarefa precisará ser reenviada.
 
-O processador usa `lv-chordia`, que empacota pesos de um trabalho de pesquisa. A licença MIT do repositório não é prova suficiente de direitos comerciais dos pesos e dos dados originais. Confirme esses direitos antes de uso comercial. Veja [o projeto](https://github.com/openmirlab/lv-chordia) e [a pesquisa original](https://github.com/music-x-lab/ISMIR2019-Large-Vocabulary-Chord-Recognition).
+O processador usa `lv-chordia` e o [BTC-ISMIR19](https://github.com/jayg996/BTC-ISMIR19). O Docker fixa o commit BTC e verifica o SHA-256 do checkpoint. O código de ambos é MIT, mas isso não confirma direitos comerciais separados para os pesos e dados de treinamento. Confirme esses direitos antes de uso comercial. Veja também [a pesquisa original do lv-chordia](https://github.com/music-x-lab/ISMIR2019-Large-Vocabulary-Chord-Recognition).
 
 ## Testes
 
-Para medir reconhecimento com músicas completas e acordes de referência, consulte [a avaliação local](benchmark/README.md). O avaliador não altera os acordes salvos nem combina automaticamente detectores. Ainda não há uma medição de precisão, pois o projeto não contém pares de áudio e anotações da mesma gravação.
+Para medir reconhecimento com músicas completas e acordes de referência, consulte [a avaliação local](benchmark/README.md). O avaliador não altera os acordes salvos nem combina automaticamente detectores. Há uma medição exploratória com trecho de guitarra em [VALIDATION.md](benchmark/VALIDATION.md); ainda faltam músicas completas anotadas.
 
 ```sh
 dotnet test backend/tests/ChordApp.UnitTests/ChordApp.UnitTests.csproj

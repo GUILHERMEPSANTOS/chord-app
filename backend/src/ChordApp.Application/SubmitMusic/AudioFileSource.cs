@@ -3,5 +3,6 @@
     public sealed record AudioFileSource(
         Stream Content,
         string FileName,
-        long Length);
+        long Length,
+        string Model = "lv-chordia");
 }

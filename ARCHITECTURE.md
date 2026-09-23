@@ -18,9 +18,9 @@ Escolha: `lv-chordia` para o primeiro protótipo, simplificando as classes em 12
 1. Next.js envia MP3/WAV à API ou uma URL canônica do YouTube.
 2. A API valida extensão, assinatura e duração do arquivo, ou host e ID da URL. Persiste um trabalho `Pending` no PostgreSQL.
 3. O worker da API marca `Processing` e chama o FastAPI. Arquivos locais e extrações de YouTube ficam em diretórios temporários.
-4. FFmpeg converte para WAV mono a 22,05 kHz. `lv-chordia` produz segmentos; `librosa` estima o tom.
-5. A API valida os segmentos, grava o resultado e marca `Completed` ou `Failed`. Os arquivos temporários são removidos.
-6. A interface consulta o estado periodicamente e sincroniza os segmentos com o relógio do áudio HTML ou do player incorporado do YouTube. Correções são gravadas via `PUT`.
+4. FFmpeg converte para WAV mono a 22,05 kHz. `lv-chordia` e BTC-ISMIR19 produzem segmentos independentes; `librosa` estima o tom.
+5. A API valida e grava os segmentos com a identificação do modelo. Um erro no BTC não apaga o resultado do `lv-chordia`. Os arquivos temporários são removidos.
+6. A interface consulta o estado periodicamente, permite escolher qual resultado salvo exibir e sincroniza seus segmentos com o player. Correções são gravadas por segmento e preservadas ao alternar.
 
 ## Etapas de implementação
 

@@ -10,6 +10,9 @@ public sealed record MusicDetails(
     string? Error,
     int ProgressPercent,
     string? ProgressStage,
+    string SelectedModel,
+    IReadOnlyList<string> AvailableModels,
+    string? BtcError,
     IReadOnlyList<ChordDetails> Chords);
 
 public sealed record ChordDetails(
