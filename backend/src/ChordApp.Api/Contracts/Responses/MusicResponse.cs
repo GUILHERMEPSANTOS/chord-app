@@ -1,5 +1,6 @@
 namespace ChordApp.Api.Contracts.Responses;
 
+/// <summary>Música e acordes devolvidos pela API ao navegador.</summary>
 public sealed record MusicResponse(
     Guid Id,
     string FileName,

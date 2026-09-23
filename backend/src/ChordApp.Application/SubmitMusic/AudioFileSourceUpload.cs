@@ -5,6 +5,7 @@ using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.SubmitMusic
 {
+    /// <summary>Valida e guarda temporariamente um MP3/WAV antes de criar o job.</summary>
     public class AudioFileSourceUpload(IMusicRepository musicRepository) : IMusicSubmission<AudioFileSource>
     {
         public async Task<SubmissionResult?> SubmitAsync(AudioFileSource source, CancellationToken cancellationToken)

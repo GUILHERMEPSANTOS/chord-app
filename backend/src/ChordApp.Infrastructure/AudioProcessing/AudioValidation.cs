@@ -3,6 +3,7 @@ using System.Diagnostics;
 
 namespace ChordApp.Infrastructure;
 
+/// <summary>Verifica a assinatura do arquivo e mede sua duração com ffprobe.</summary>
 public static class AudioValidation
 {
     public static async Task<bool> HasSignatureAsync(string path, string ext, CancellationToken cancellation)

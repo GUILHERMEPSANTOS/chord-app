@@ -1,5 +1,6 @@
 namespace ChordApp.Infrastructure;
 
+/// <summary>Localiza e remove arquivos de áudio usados apenas durante o processamento.</summary>
 public static class TempFiles
 {
     public static string Root => Environment.GetEnvironmentVariable("AUDIO_TEMP_DIR") ?? Path.Combine(Path.GetTempPath(), "chord-app");

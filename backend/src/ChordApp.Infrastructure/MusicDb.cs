@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChordApp.Infrastructure
 {
+    /// <summary>Contexto do Entity Framework que mapeia músicas e acordes no PostgreSQL.</summary>
     public sealed class MusicDb(DbContextOptions<MusicDb> options) : DbContext(options)
     {
         public DbSet<Music> Musics => Set<Music>();

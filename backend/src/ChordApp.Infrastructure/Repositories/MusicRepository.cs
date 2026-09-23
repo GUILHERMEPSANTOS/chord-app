@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChordApp.Infrastructure.Repositories;
 
+/// <summary>Implementação do repositório de músicas com Entity Framework.</summary>
 public sealed class MusicRepository(MusicDb musicDb) : IMusicRepository
 {
     public async Task<IReadOnlyList<Music>> ListAsync(CancellationToken cancellationToken)

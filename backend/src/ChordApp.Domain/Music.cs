@@ -1,5 +1,6 @@
 namespace ChordApp.Domain;
 
+/// <summary>Música analisada, com origem, estado, tom, modelo selecionado e acordes.</summary>
 public sealed class Music
 {
     public Guid Id { get; set; } = Guid.NewGuid();

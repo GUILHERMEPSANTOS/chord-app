@@ -4,6 +4,7 @@
     <Project Path="src/ChordApp.Application/ChordApp.Application.csproj" />
     <Project Path="src/ChordApp.Domain/ChordApp.Domain.csproj" />
     <Project Path="src/ChordApp.Infrastructure/ChordApp.Infrastructure.csproj" Id="b1cc0e70-c401-4515-a02c-efbd95fd90a4" />
+    <Project Path="src/ChordApp.Worker/ChordApp.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ChordApp.IntegrationTests/ChordApp.IntegrationTests.csproj" />

@@ -3,8 +3,10 @@ using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.QueryMusic;
 
+/// <summary>Resultado possível da tentativa de seleção de modelo.</summary>
 public enum SelectMusicModelStatus { Success, NotFound, Unavailable }
 
+/// <summary>Alterna o modelo exibido quando há acordes salvos para ele.</summary>
 public sealed class SelectMusicModel(IMusicRepository repository)
 {
     public async Task<SelectMusicModelStatus> ExecuteAsync(Guid musicId, string model, CancellationToken cancellationToken)

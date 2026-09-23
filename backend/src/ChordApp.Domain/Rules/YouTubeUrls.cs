@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace ChordApp.Domain.Rules;
 
+/// <summary>Validação e normalização de URLs públicas de vídeos do YouTube.</summary>
 public static class YouTubeUrls
 {
     public static string? Canonical(string? value)

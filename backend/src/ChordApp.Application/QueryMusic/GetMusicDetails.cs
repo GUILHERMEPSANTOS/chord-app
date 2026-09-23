@@ -3,6 +3,7 @@ using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.QueryMusic;
 
+/// <summary>Consulta uma música com acordes do modelo selecionado e progresso atual.</summary>
 public sealed class GetMusicDetails(IMusicRepository repository, IProcessingProgressReader progressReader)
 {
     public async Task<MusicDetails?> ExecuteAsync(Guid id, CancellationToken cancellationToken)

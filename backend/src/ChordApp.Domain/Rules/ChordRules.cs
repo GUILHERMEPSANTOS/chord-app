@@ -1,5 +1,6 @@
 namespace ChordApp.Domain.Rules;
 
+/// <summary>Vocabulário aceito e validação de tempos e nomes de acordes.</summary>
 public static class ChordRules
 {
     private static readonly HashSet<string> Allowed =

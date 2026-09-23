@@ -4,6 +4,7 @@ using ChordApp.Application.QueryMusic;
 
 namespace ChordApp.Api.Services;
 
+/// <summary>Consulta a rota de progresso do processador Python para a API.</summary>
 public sealed class ProcessorProgressReader(IHttpClientFactory clients) : IProcessingProgressReader
 {
     public async Task<ProcessingProgress?> ReadAsync(

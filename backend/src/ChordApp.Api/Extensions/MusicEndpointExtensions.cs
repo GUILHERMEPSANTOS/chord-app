@@ -5,6 +5,7 @@ using ChordApp.Application.SubmitMusic;
 
 namespace ChordApp.Api.Extensions;
 
+/// <summary>Mapeia as rotas HTTP de músicas para os casos de uso da aplicação.</summary>
 public static class MusicEndpointExtensions
 {
     public static WebApplication MapMusicEndpoints(this WebApplication app)

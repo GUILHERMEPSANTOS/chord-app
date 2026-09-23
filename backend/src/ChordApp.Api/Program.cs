@@ -1,4 +1,3 @@
-using ChordApp.Api;
 using ChordApp.Api.Extensions;
 using ChordApp.Api.Middleware;
 using ChordApp.Api.Services;
@@ -17,7 +16,6 @@ builder.Services.AddHttpClient("processor", client =>
     client.BaseAddress = new Uri(builder.Configuration["ProcessorUrl"] ?? "http://localhost:8000");
     client.Timeout = Timeout.InfiniteTimeSpan;
 });
-builder.Services.AddHostedService<AnalysisWorker>();
 builder.Services.AddScoped<IMusicRepository, MusicRepository>();
 builder.Services.AddScoped<IMusicSubmission<AudioFileSource>, AudioFileSourceUpload>();
 builder.Services.AddScoped<IMusicSubmission<YouTubeSource>, MusicSubmissionYoutube>();
@@ -41,4 +39,5 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapMusicEndpoints();
 app.Run();
 
+/// <summary>Ponto de entrada da API; declarado como partial para os testes HTTP.</summary>
 public partial class Program { }

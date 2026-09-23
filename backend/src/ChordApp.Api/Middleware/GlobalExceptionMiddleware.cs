@@ -2,7 +2,7 @@ namespace ChordApp.Api.Middleware;
 
 /// <summary>
 /// Registra falhas inesperadas das requisições HTTP e devolve uma resposta segura ao cliente.
-/// As falhas de tarefas em segundo plano são tratadas pelo AnalysisWorker.
+/// As falhas de tarefas em segundo plano são tratadas no projeto ChordApp.Worker.
 /// </summary>
 public sealed class GlobalExceptionMiddleware(
     RequestDelegate next,

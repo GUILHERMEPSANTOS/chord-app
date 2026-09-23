@@ -18,10 +18,12 @@ Cada novo áudio é analisado pelo `lv-chordia` (cinco redes) e pelo BTC-ISMIR19
 | Serviço | Responsabilidade |
 | --- | --- |
 | `web` | Mostra o player, o progresso e os acordes; envia pedidos à API. |
-| `api` | Valida upload e URL, cria a análise, consulta e atualiza o PostgreSQL e chama o processador. |
+| `api` | Valida upload e URL, cria o job e atende consultas e correções. Não executa análises em segundo plano. |
+| `worker` | Busca jobs pendentes no PostgreSQL, chama o processador e salva resultados ou falhas. |
 | `processor` | Extrai e normaliza áudio com yt-dlp/FFmpeg, executa os detectores e devolve tom e acordes. Veja o [guia do processador](processor/README.md). |
 | `db` | PostgreSQL que persiste músicas, resultados e correções. |
 | `postgres_data` | Volume Docker dos dados do banco. O áudio temporário não fica nesse volume. |
+| `audio_temp` | Volume compartilhado entre API e Worker para MP3/WAV até o fim da análise. O Worker remove o arquivo ao concluir ou falhar. |
 
 O middleware da API registra erros inesperados nas requisições e retorna HTTP 500 com um `traceId`, sem enviar detalhes internos ao navegador. Falhas do processamento em segundo plano são registradas pelo worker e aparecem no estado da análise.
 
@@ -31,7 +33,11 @@ O middleware da API registra erros inesperados nas requisições e retorna HTTP 
 | --- | --- |
 | `AudioFileSourceUpload` | Valida e recebe o arquivo, cria a análise pendente e mantém o áudio temporário até o processamento. |
 | `MusicSubmissionYoutube` | Valida a URL do YouTube e cria a análise pendente. |
-| `AnalysisWorker` | Busca análises pendentes, chama o processador Python e salva resultados ou falhas. |
+| `AnalysisWorker` | Mantém o ciclo de busca no projeto `ChordApp.Worker` e recupera jobs interrompidos após reinício. |
+| `AnalysisJobRunner` | Reserva um job, coordena a análise, grava o estado e remove o arquivo temporário. |
+| `IProcessorClient` / `ProcessorClient` | Separa a comunicação HTTP com o Python do ciclo de jobs. |
+| `AnalysisResultMapper` | Valida e transforma a resposta Python em acordes persistidos por modelo. |
+| `InterruptedJobRecovery` | Marca jobs que estavam processando como falhos quando o Worker reinicia. |
 | `ProcessorProgressReader` | Consulta o progresso em memória do processador para a tela. |
 | `ListMusics` | Lista as análises salvas. |
 | `GetMusicDetails` | Monta os detalhes da música com estado, progresso e acordes do modelo selecionado. |
@@ -39,6 +45,16 @@ O middleware da API registra erros inesperados nas requisições e retorna HTTP 
 | `CorrectMusicChord` | Aplica e persiste a correção manual de um acorde. |
 
 As rotas HTTP estão em `MusicEndpointExtensions`, e `GlobalExceptionMiddleware` cuida dos erros inesperados dessas rotas.
+As classes e contratos .NET têm resumos XML no próprio código. O projeto `ChordApp.Worker` está incluído em `backend/ChordApp.slnx`.
+
+### Fluxo do job
+
+1. A API valida a entrada e cria uma música com estado `Pending`; uploads ficam em `audio_temp`.
+2. O Worker encontra o job e muda seu estado para `Processing`.
+3. `ProcessorClient` envia o arquivo ou a URL ao Python. `AnalysisResultMapper` valida os segmentos e separa os resultados de cada modelo.
+4. O Worker salva `Completed` ou `Failed` e remove o upload temporário. Ao reiniciar, ele marca jobs que estavam em `Processing` como interrompidos.
+
+Execute apenas uma réplica do Worker nesta versão: a busca de jobs ainda não implementa reserva atômica entre múltiplas instâncias.
 
 ## Contrato
 

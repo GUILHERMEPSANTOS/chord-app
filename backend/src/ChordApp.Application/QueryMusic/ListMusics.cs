@@ -2,6 +2,7 @@ using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.QueryMusic;
 
+/// <summary>Caso de uso que lista as músicas salvas.</summary>
 public sealed class ListMusics(IMusicRepository repository)
 {
     public async Task<IReadOnlyList<MusicListItem>> ExecuteAsync(CancellationToken cancellationToken)

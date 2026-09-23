@@ -1,5 +1,6 @@
 namespace ChordApp.Application.QueryMusic;
 
+/// <summary>Dados completos de uma música exibidos pela API.</summary>
 public sealed record MusicDetails(
     Guid Id,
     string FileName,
@@ -15,6 +16,7 @@ public sealed record MusicDetails(
     string? BtcError,
     IReadOnlyList<ChordDetails> Chords);
 
+/// <summary>Dados de um segmento de acorde na resposta da aplicação.</summary>
 public sealed record ChordDetails(
     Guid Id,
     double StartTime,

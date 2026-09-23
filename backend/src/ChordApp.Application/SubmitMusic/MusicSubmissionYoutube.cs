@@ -1,9 +1,10 @@
-﻿using ChordApp.Domain;
+using ChordApp.Domain;
 using ChordApp.Domain.Rules;
 using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.SubmitMusic
 {
+    /// <summary>Valida a URL e cria uma análise pendente sem baixar áudio na API.</summary>
     public class MusicSubmissionYoutube(IMusicRepository musicRepository) : IMusicSubmission<YouTubeSource>
     {        
         public async Task<SubmissionResult?> SubmitAsync(YouTubeSource source, CancellationToken cancellationToken)

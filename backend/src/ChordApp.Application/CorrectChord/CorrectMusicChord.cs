@@ -4,6 +4,7 @@ using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.CorrectChord;
 
+/// <summary>Valida e persiste a correção manual de um acorde.</summary>
 public sealed class CorrectMusicChord(IMusicRepository repository) : ICorrectMusicChord
 {
     public async Task<CorrectChordResult> ExecuteAsync(

@@ -1,5 +1,6 @@
 namespace ChordApp.Domain;
 
+/// <summary>Identificadores e validação dos detectores disponíveis.</summary>
 public static class RecognitionModels
 {
     public const string LvChordia = "lv-chordia";

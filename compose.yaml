@@ -24,7 +24,7 @@ services:
       resources:
         limits:
           memory: 4G
-  # API .NET: valida pedidos, coordena tarefas, consulta o banco e atende o navegador.
+  # API .NET: valida pedidos, salva uploads, consulta o banco e atende o navegador.
   api:
     build:
       context: .
@@ -37,9 +37,30 @@ services:
       ProcessorUrl: http://processor:8000
       WebOrigin: http://localhost:3000
       AUDIO_TEMP_DIR: /tmp/chord-app
+    volumes:
+      - audio_temp:/tmp/chord-app
     depends_on:
       db:
         condition: service_healthy
+      processor:
+        condition: service_started
+  # Worker .NET: busca jobs pendentes, chama o Python e grava resultados no banco.
+  worker:
+    build:
+      context: .
+      dockerfile: backend/src/ChordApp.Worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Database: Host=db;Database=chordapp;Username=chordapp;Password=chordapp
+      ProcessorUrl: http://processor:8000
+      AUDIO_TEMP_DIR: /tmp/chord-app
+    volumes:
+      - audio_temp:/tmp/chord-app
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
       processor:
         condition: service_started
   # Interface Next.js: upload, seleção de modelo, player, progresso e edição de acordes.
@@ -54,3 +75,5 @@ services:
 volumes:
   # Persiste somente os dados do PostgreSQL entre reinícios.
   postgres_data:
+  # Compartilha uploads temporários entre API e Worker durante a análise.
+  audio_temp:

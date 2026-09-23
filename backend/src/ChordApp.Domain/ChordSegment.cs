@@ -1,5 +1,6 @@
 namespace ChordApp.Domain;
 
+/// <summary>Trecho de acorde reconhecido ou corrigido, associado a uma música e a um modelo.</summary>
 public sealed class ChordSegment
 {
     public Guid Id { get; set; } = Guid.NewGuid();

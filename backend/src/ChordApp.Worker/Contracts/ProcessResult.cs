@@ -1,4 +1,6 @@
-namespace ChordApp.Api.Contracts.Processor; 
+namespace ChordApp.Worker.Contracts;
+
+/// <summary>Resposta da análise Python, com resultados independentes por modelo.</summary>
 public sealed record ProcessResult(
     string? Key,
     double? DurationSeconds,

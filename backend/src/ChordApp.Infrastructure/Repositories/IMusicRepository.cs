@@ -2,6 +2,7 @@ using ChordApp.Domain;
 
 namespace ChordApp.Infrastructure.Repositories;
 
+/// <summary>Contrato de persistência usado pelos casos de uso da aplicação.</summary>
 public interface IMusicRepository
 {
     Task Save(Music music);
