@@ -4,16 +4,7 @@ using ChordApp.Infrastructure.Repositories;
 
 namespace ChordApp.Application.CorrectChord;
 
-public enum CorrectChordStatus
-{
-    Success,
-    NotFound,
-    InvalidChord
-}
-
-public sealed record CorrectChordResult(CorrectChordStatus Status, ChordDetails? Chord = null);
-
-public sealed class CorrectMusicChord(IMusicRepository repository)
+public sealed class CorrectMusicChord(IMusicRepository repository) : ICorrectMusicChord
 {
     public async Task<CorrectChordResult> ExecuteAsync(
         Guid musicId,

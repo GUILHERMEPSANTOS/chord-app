@@ -6,21 +6,18 @@ namespace ChordApp.Api.Services;
 
 public sealed class ProcessorProgressReader(IHttpClientFactory clients) : IProcessingProgressReader
 {
-    public async Task<ProcessingProgress?> ReadAsync(Guid musicId, CancellationToken cancellationToken)
+    public async Task<ProcessingProgress?> ReadAsync(
+        Guid musicId,
+        CancellationToken cancellationToken
+    )
     {
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(2));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(2));
 
-            var snapshot = await clients.CreateClient("processor")
-                .GetFromJsonAsync<ProgressSnapshot>($"/progress/{musicId}", timeout.Token);
+        var snapshot = await clients
+            .CreateClient("processor")
+            .GetFromJsonAsync<ProgressSnapshot>($"/progress/{musicId}", timeout.Token);
 
-            return snapshot is null ? null : new ProcessingProgress(snapshot.Percent, snapshot.Stage);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
-        {
-            return null;
-        }
+        return snapshot is null ? null : new ProcessingProgress(snapshot.Percent, snapshot.Stage);
     }
 }
