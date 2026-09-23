@@ -4,5 +4,7 @@ python-multipart==0.0.20
 lv-chordia==1.1.0
 librosa==0.11.0
 numpy>=2.2,<3
+mir_eval==0.8.2
+psutil==7.0.0
 yt-dlp==2026.8.19
 yt-dlp-ejs==0.8.0

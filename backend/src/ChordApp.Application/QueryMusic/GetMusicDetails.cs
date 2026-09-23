@@ -29,6 +29,11 @@ public sealed class GetMusicDetails(IMusicRepository repository, IProcessingProg
             }
         }
 
+        var availableModels = music.Chords.Select(chord => chord.Model).Distinct().OrderBy(model => model).ToList();
+        var selectedModel = availableModels.Contains(music.SelectedModel)
+            ? music.SelectedModel
+            : availableModels.FirstOrDefault() ?? music.SelectedModel;
+
         return new MusicDetails(
             music.Id,
             music.FileName,
@@ -39,7 +44,11 @@ public sealed class GetMusicDetails(IMusicRepository repository, IProcessingProg
             music.Error,
             percent,
             stage,
+            selectedModel,
+            availableModels,
+            music.BtcError,
             music.Chords
+                .Where(chord => chord.Model == selectedModel)
                 .OrderBy(chord => chord.StartTime)
                 .Select(chord => new ChordDetails(
                     chord.Id,

@@ -9,6 +9,9 @@ namespace ChordApp.Application.SubmitMusic
     {
         public async Task<SubmissionResult?> SubmitAsync(AudioFileSource source, CancellationToken cancellationToken)
         {
+            if (!RecognitionModels.IsAllowed(source.Model))
+                return null;
+
             if (source.Length == 0 || source.Length > 30 * 1024 * 1024)
                 return null;
 
@@ -39,6 +42,7 @@ namespace ChordApp.Application.SubmitMusic
 
                 var music = Music.Create(fileName: Path.GetFileName(source.FileName), durationSeconds: duration.Value);
                 music.Id = id;
+                music.SelectedModel = source.Model;
 
                 await musicRepository.Save(music);
 

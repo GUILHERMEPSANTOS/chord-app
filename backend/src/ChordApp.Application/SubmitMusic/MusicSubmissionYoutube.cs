@@ -8,6 +8,9 @@ namespace ChordApp.Application.SubmitMusic
     {        
         public async Task<SubmissionResult?> SubmitAsync(YouTubeSource source, CancellationToken cancellationToken)
         {
+            if (!RecognitionModels.IsAllowed(source.Model))
+                return null;
+
             var canonical = YouTubeUrls.Canonical(source.Url);
 
             if (canonical == null)
@@ -16,6 +19,7 @@ namespace ChordApp.Application.SubmitMusic
             var fileName = $"YouTube {canonical.Split('=')[1]}";
 
             var music = Music.Create(fileName, canonical);
+            music.SelectedModel = source.Model;
 
             await musicRepository.Save(music);
 

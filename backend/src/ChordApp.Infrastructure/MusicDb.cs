@@ -20,6 +20,8 @@ namespace ChordApp.Infrastructure
                 .Entity<Music>()
                 .Property(music => music.Status)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<ChordSegment>().HasIndex(chord => new { chord.MusicId, chord.Model, chord.StartTime });
         }
     }
 }

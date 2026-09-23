@@ -1,0 +1,11 @@
+{
+  "tracks": [
+    {
+      "id": "minha-musica-01",
+      "audio": "minha-musica-01.wav",
+      "annotation": "minha-musica-01.lab",
+      "source": "Gravação própria; substituir pela origem exata",
+      "license": "Uso pessoal; registrar os direitos do áudio e das anotações"
+    }
+  ]
+}

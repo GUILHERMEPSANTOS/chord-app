@@ -9,6 +9,8 @@ public sealed class Music
     public string? Key { get; set; }
     public AnalysisStatus Status { get; set; } = AnalysisStatus.Pending;
     public string? Error { get; set; }
+    public string SelectedModel { get; set; } = RecognitionModels.LvChordia;
+    public string? BtcError { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public List<ChordSegment> Chords { get; set; } = [];
 

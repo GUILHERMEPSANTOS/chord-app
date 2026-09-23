@@ -6,6 +6,18 @@ from app import main
 
 
 class ProgressTests(unittest.TestCase):
+    def test_dual_analysis_keeps_results_separate(self):
+        from benchmark.segments import Segment
+
+        with patch.object(main, "analyze", return_value={"key": "C", "durationSeconds": 2.0, "chords": [{"startTime": 0, "endTime": 2, "chord": "C", "confidence": None}]}), \
+             patch("benchmark.detectors.BtcDetector") as detector:
+            detector.return_value.predict.return_value = [Segment(0, 2, "G:7")]
+            result = main.analyze_both("unused.wav", "dual-job")
+
+        self.assertEqual("C", result["results"]["lv-chordia"][0]["chord"])
+        self.assertEqual("G7", result["results"]["btc-ismir19"][0]["chord"])
+        self.assertEqual(100, main.progress("dual-job")["percent"])
+
     def test_model_passages_advance_progress(self):
         observed = []
 
@@ -25,6 +37,7 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual("C", result["chords"][0]["chord"])
 
     def test_seventh_labels_are_preserved(self):
+        self.assertEqual("C", main.simplify("C"))
         self.assertEqual("C7", main.simplify("C:7"))
         self.assertEqual("F#maj7", main.simplify("F#:maj7"))
         self.assertEqual("A#m7", main.simplify("Bb:min7"))

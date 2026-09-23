@@ -22,6 +22,7 @@ builder.Services.AddScoped<IMusicSubmission<AudioFileSource>, AudioFileSourceUpl
 builder.Services.AddScoped<IMusicSubmission<YouTubeSource>, MusicSubmissionYoutube>();
 builder.Services.AddScoped<ListMusics>();
 builder.Services.AddScoped<GetMusicDetails>();
+builder.Services.AddScoped<SelectMusicModel>();
 builder.Services.AddScoped<CorrectMusicChord>();
 builder.Services.AddScoped<IProcessingProgressReader, ProcessorProgressReader>();
 builder.Services.AddCors(options =>

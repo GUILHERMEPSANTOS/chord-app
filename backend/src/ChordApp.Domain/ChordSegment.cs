@@ -4,6 +4,7 @@ public sealed class ChordSegment
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid MusicId { get; set; }
+    public string Model { get; set; } = RecognitionModels.LvChordia;
     public double StartTime { get; set; }
     public double EndTime { get; set; }
     public string Chord { get; set; } = "N";
